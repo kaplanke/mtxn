@@ -76,8 +76,9 @@ export class MultiTxnMngr {
                         });
                 }).catch((err) => {
                     that.logger.error("Transaction chain failed. Please see previous errors.");
-                    this.rollbackAll(tasks);
-                    rejectExec(err);
+                    this.rollbackAll(tasks).finally(()=>{
+                        rejectExec(err);
+                    });                    
                 })
             }
         });
