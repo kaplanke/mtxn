@@ -1,5 +1,6 @@
 import { MultiTxnMngr } from "../MultiTxnMngr";
 import { FunctionTask } from "../Tasks/FunctionTask";
+import { Task } from "../Tasks/Task";
 import { Context } from "./Context";
 
 export class FunctionContext implements Context {
@@ -43,18 +44,17 @@ export class FunctionContext implements Context {
         execFunc: (task: FunctionTask) => Promise<FunctionTask>,
         params?: any,
         commitFunc?: (task: FunctionTask) => Promise<FunctionTask>,
-        rollbackFunc?: (task: FunctionTask) => Promise<FunctionTask>) {
+        rollbackFunc?: (task: FunctionTask) => Promise<FunctionTask>): Task {
 
-        txnMngr.addTask(
-            new FunctionTask(
-                FunctionContext.contextHandle,
-                execFunc,
-                params,
-                commitFunc,
-                rollbackFunc
-            )
+        let task = new FunctionTask(
+            FunctionContext.contextHandle,
+            execFunc,
+            params,
+            commitFunc,
+            rollbackFunc
         );
-
+        txnMngr.addTask(task);
+        return task;
     }
 
     getName(): string {
