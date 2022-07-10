@@ -1,13 +1,12 @@
 import log4js from "@log4js-node/log4js-api";
 import { Context } from "./Contexts/Context";
-import { PopTask } from "./Tasks/PopTask";
 import { Task } from "./Tasks/Task";
 
 
 export class MultiTxnMngr {
 
     tasks: Task[] = new Array<Task>();
-    lastExecuted: number = 0;
+    lastExecuted = 0;
     logger = log4js.getLogger("MultiTxnMngr");
 
     constructor() {
@@ -20,75 +19,77 @@ export class MultiTxnMngr {
 
     async exec(): Promise<Task[]> {
         const tasks = this.tasks;
-        const that = this;
         return new Promise((resolveExec, rejectExec) => {
             if (!tasks || tasks.length === 0) {
                 this.logger.debug("Empty task list. Resolving...");
                 resolveExec(tasks);
             } else {
                 new Promise<Task[]>((resolveChain, rejectChain) => {
-                    function exec(task: Task) {
+                    function exec(task: Task, txnMngr: MultiTxnMngr) {
                         try {
                             const res: Promise<Task> | Task[] = task.exec();
                             if (Array.isArray(res)) {
-                                tasks.splice(that.lastExecuted, 0, ...res);
-                                next();
+                                tasks.splice(txnMngr.lastExecuted, 0, ...res);
+                                next(txnMngr);
                             } else {
                                 (res as (Promise<Task>)).then(() => {
-                                    next();
+                                    next(txnMngr);
                                 }).catch((err) => {
-                                    that.logger.error("Transaction failed.", err);
+                                    txnMngr.logger.error("Transaction failed.", err);
                                     rejectChain(err);
                                 });
                             }
                         } catch (err) {
-                            that.logger.error("Transaction failed.", err);
+                            txnMngr.logger.error("Transaction failed.", err);
                             rejectChain(err);
                         }
                     }
-                    function next() {
+                    function next(txnMngr: MultiTxnMngr) {
                         try {
-                            if (that.lastExecuted < tasks.length) {
-                                const task = tasks[that.lastExecuted++];
+                            if (txnMngr.lastExecuted < tasks.length) {
+                                const task = tasks[txnMngr.lastExecuted++];
                                 if (!task || (task as Task).exec === undefined) {
-                                    next();
+                                    next(txnMngr);
                                 } else {
-                                    that.logger.debug("Is " + task.getContext().getName(that) + " initialized? " + task.getContext().isInitialized(that));
-                                    if (!task.getContext().isInitialized(that)) {
-                                        task.getContext().init(that).then(() => {
-                                            exec(task);
+                                    txnMngr.logger.debug(
+                                        "Is " + task.getContext().getName(txnMngr)
+                                        + " initialized? " + task.getContext().isInitialized(txnMngr)
+                                    );
+                                    if (!task.getContext().isInitialized(txnMngr)) {
+                                        task.getContext().init(txnMngr).then(() => {
+                                            exec(task, txnMngr);
                                         }).catch((err) => {
-                                            that.logger.error("Context init failed.", err);
+                                            txnMngr.logger.error("Context init failed.", err);
                                             rejectChain(err);
                                         });
                                     } else {
-                                        exec(task);
+                                        exec(task, txnMngr);
                                     }
                                 }
                             } else {
                                 resolveChain(tasks);
                             }
                         } catch (err) {
-                            that.logger.error("Transaction failed.", err);
+                            txnMngr.logger.error("Transaction failed.", err);
                             rejectChain(err);
                         }
                     }
-                    next();
+                    next(this);
                 }).then((_) => {
                     this.commitAll(tasks)
                         .then((__) => resolveExec(tasks))
                         .catch((err) => {
-                            that.logger.error("Failed to commit txns. Trying to rollback. Err:" + err);
+                            this.logger.error("Failed to commit txns. Trying to rollback. Err:" + err);
                             this.rollbackAll(tasks).then(() => {
                                 rejectExec(err);
                             }).catch((err2) => {
                                 // Nothing to do for rollback failures other than logging o_O
-                                that.logger.error(err2);
+                                this.logger.error(err2);
                                 rejectExec(err2);
                             });
                         });
                 }).catch((err) => {
-                    that.logger.error("Transaction chain failed. Please see previous errors.");
+                    this.logger.error("Transaction chain failed. Please see previous errors.");
                     this.rollbackAll(tasks).finally(() => {
                         rejectExec(err);
                     });
@@ -109,7 +110,7 @@ export class MultiTxnMngr {
                     }
                 }
             });
-            Promise.all(promises).then(contexts => {
+            Promise.all(promises).then((_contexts) => {
                 this.logger.info("Transaction chain completed.");
                 resolveCommits(tasks);
             }).catch((err) => {
@@ -132,7 +133,7 @@ export class MultiTxnMngr {
                     }
                 }
             });
-            Promise.allSettled(promises).then(contexts => {
+            Promise.allSettled(promises).then((_contexts) => {
                 this.logger.info("Transaction chain rollbacked.");
                 resolveRollback(tasks);
             }).catch((err) => {

@@ -3,8 +3,8 @@ import { Task } from "./Task";
 
 export class FunctionTask implements Task {
 
-    result: any;
-    params: any;
+    result: unknown;
+    params: unknown;
     context: Context;
     execFunc: (task: FunctionTask) => Promise<FunctionTask>;
     commitFunc: ((task: FunctionTask) => Promise<FunctionTask>) | undefined;
@@ -12,7 +12,7 @@ export class FunctionTask implements Task {
 
     constructor(context: Context,
         execFunc: (task: FunctionTask) => Promise<FunctionTask>,
-        params?: any,
+        params?: unknown,
         commitFunc?: (task: FunctionTask) => Promise<FunctionTask>,
         rollbackFunc?: (task: FunctionTask) => Promise<FunctionTask>
     ) {
@@ -28,7 +28,7 @@ export class FunctionTask implements Task {
         return this.result;
     }
 
-    setParams(params: any) {
+    setParams(params: unknown) {
         this.params = params;
     }
 

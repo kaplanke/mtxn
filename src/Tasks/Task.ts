@@ -5,6 +5,6 @@ export interface Task {
     context: Context;
     getContext(): Context;
     exec(): Promise<Task> | Task[];
-    getResult(): any;
+    getResult(): unknown;
 
 }
