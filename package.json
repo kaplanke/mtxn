@@ -1,6 +1,6 @@
 {
   "name": "multiple-transaction-manager",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Multiple Transaction Manager",
   "main": "index.js",
   "types": "index.d.ts",

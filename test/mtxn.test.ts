@@ -1,7 +1,10 @@
-import { MultiTxnMngr } from "../src/MultiTxnMngr";
-import { FunctionContext } from "../src/Contexts/FunctionContext";
-import { describe, test, beforeAll, expect } from '@jest/globals';
+import { beforeAll, describe, expect, test } from '@jest/globals';
 import log4js from "log4js";
+import { FunctionContext } from "../src/Contexts/FunctionContext";
+import { MultiTxnMngr } from "../src/MultiTxnMngr";
+import { FunctionTask } from "../src/Tasks/FunctionTask";
+import { PopTask } from '../src/Tasks/PopTask';
+import { Task } from "../src/Tasks/Task";
 
 log4js.configure({
     appenders: { 'out': { type: 'stdout' } },
@@ -74,6 +77,53 @@ describe("Multiple transaction manager workflow test...", () => {
 
         await expect(txnMngr.exec()).rejects.not.toBeNull();
 
+    });
+
+
+    test("PopTask test",  async () => {
+
+        // init manager
+        const txnMngr: MultiTxnMngr = new MultiTxnMngr();
+
+        // Task for Kevin
+        const taskForKevin: Task = new FunctionTask(FunctionContext.contextHandle, (task) => {
+            logger.info("I am Kevin");
+            task.result = "Kevin";
+            return Promise.resolve(task);
+        });
+
+        // Task for Bob
+        const taskForBob: Task = new FunctionTask(FunctionContext.contextHandle, (task) => {
+            logger.info("I am Bob");
+            task.result = "Bob";
+            return Promise.resolve(task);
+        });
+
+        // Add a task for selecting Bob or Kevin randomly
+        const randTask: Task = FunctionContext.addTask(txnMngr, (task) => {
+            task.result = ["Bob", "Kevin"][Math.floor(Math.random() * 2)];
+            logger.info(task.result + " is selected");
+            return Promise.resolve(task);
+        });
+
+        // Add a pop task that will add the proper task on the fly... 
+        const popTask: PopTask = FunctionContext.addPopTask(txnMngr, (popTask) => {
+            if (randTask.getResult() === "Kevin") {
+                popTask.popTasks.push(taskForKevin);
+            } else {
+                popTask.popTasks.push(taskForBob);
+            }
+            return popTask.popTasks;
+        });
+
+        await txnMngr.exec();
+        if (randTask.getResult() === "Kevin") {
+            expect(taskForKevin.getResult()).toBe("Kevin");
+            expect(taskForBob.getResult()).toBeNull();
+        } else {
+            expect(taskForBob.getResult()).toBe("Bob");
+            expect(taskForKevin.getResult()).toBeNull();
+        }
     });
 
 

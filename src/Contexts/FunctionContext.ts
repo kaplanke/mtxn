@@ -1,5 +1,6 @@
 import { MultiTxnMngr } from "../MultiTxnMngr";
 import { FunctionTask } from "../Tasks/FunctionTask";
+import { PopTask } from "../Tasks/PopTask";
 import { Task } from "../Tasks/Task";
 import { Context } from "./Context";
 
@@ -9,7 +10,7 @@ export class FunctionContext implements Context {
     }
     commit(multiTxnMngr: MultiTxnMngr): Promise<Context> {
         return new Promise<Context>((resolveCommit, rejectCommit) => {
-            const promises: Array<Promise<FunctionTask>> = [];
+            const promises: Promise<FunctionTask>[] = [];
             multiTxnMngr.tasks.forEach((task) => {
                 if (task instanceof FunctionTask && task.commitFunc) {
                     promises.push(task.commitFunc(task));
@@ -22,7 +23,7 @@ export class FunctionContext implements Context {
     }
     rollback(multiTxnMngr: MultiTxnMngr): Promise<Context> {
         return new Promise<Context>((resolveCommit, rejectCommit) => {
-            const promises: Array<Promise<FunctionTask>> = [];
+            const promises: Promise<FunctionTask>[] = [];
             multiTxnMngr.tasks.slice(0, multiTxnMngr.lastExecuted).reverse().forEach((task) => {
                 if (task instanceof FunctionTask && task.rollbackFunc) {
                     promises.push(task.rollbackFunc(task));
@@ -46,13 +47,24 @@ export class FunctionContext implements Context {
         commitFunc?: (task: FunctionTask) => Promise<FunctionTask>,
         rollbackFunc?: (task: FunctionTask) => Promise<FunctionTask>): Task {
 
-        let task = new FunctionTask(
+        const task = new FunctionTask(
             FunctionContext.contextHandle,
             execFunc,
             params,
             commitFunc,
             rollbackFunc
         );
+        txnMngr.addTask(task);
+        return task;
+    }
+
+    static addPopTask(txnMngr: MultiTxnMngr,
+        popFunc: (task: PopTask) => Task[]): PopTask {
+
+        const task = new PopTask(
+            FunctionContext.contextHandle,
+            popFunc);
+
         txnMngr.addTask(task);
         return task;
     }

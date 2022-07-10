@@ -3,6 +3,7 @@ import { Task } from "./Task";
 
 export class FunctionTask implements Task {
 
+    result: any;
     params: any;
     context: Context;
     execFunc: (task: FunctionTask) => Promise<FunctionTask>;
@@ -19,11 +20,12 @@ export class FunctionTask implements Task {
         this.execFunc = execFunc;
         this.commitFunc = commitFunc;
         this.rollbackFunc = rollbackFunc;
+        this.result = null;
         if (params)
             this.params = params;
     }
     getResult() {
-        return null;
+        return this.result;
     }
 
     setParams(params: any) {

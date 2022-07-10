@@ -4,7 +4,7 @@ export interface Task {
 
     context: Context;
     getContext(): Context;
-    exec(): Promise<Task>;
+    exec(): Promise<Task> | Task[];
     getResult(): any;
 
 }
