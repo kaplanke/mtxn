@@ -5,7 +5,7 @@ import { Task } from "../Tasks/Task";
 import { Context } from "./Context";
 
 export class FunctionContext implements Context {
-    init(multiTxnMngr: MultiTxnMngr): Promise<Context> {
+    init(_multiTxnMngr: MultiTxnMngr): Promise<Context> {
         return Promise.resolve(this);
     }
     commit(multiTxnMngr: MultiTxnMngr): Promise<Context> {
@@ -35,7 +35,7 @@ export class FunctionContext implements Context {
         });
     }
 
-    isInitialized(multiTxnMngr: MultiTxnMngr): boolean {
+    isInitialized(_multiTxnMngr: MultiTxnMngr): boolean {
         return true;
     }
 
@@ -43,7 +43,7 @@ export class FunctionContext implements Context {
 
     static addTask(txnMngr: MultiTxnMngr,
         execFunc: (task: FunctionTask) => Promise<FunctionTask>,
-        params?: any,
+        params?: unknown,
         commitFunc?: (task: FunctionTask) => Promise<FunctionTask>,
         rollbackFunc?: (task: FunctionTask) => Promise<FunctionTask>): Task {
 
@@ -64,7 +64,7 @@ export class FunctionContext implements Context {
         const task = new PopTask(
             FunctionContext.contextHandle,
             popFunc);
-
+ 
         txnMngr.addTask(task);
         return task;
     }
