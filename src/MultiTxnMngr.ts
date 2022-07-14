@@ -52,11 +52,11 @@ export class MultiTxnMngr {
                                     next(txnMngr);
                                 } else {
                                     txnMngr.logger.debug(
-                                        "Is " + task.getContext().getName(txnMngr)
-                                        + " initialized? " + task.getContext().isInitialized(txnMngr)
+                                        "Is " + task.getContext().getName()
+                                        + " initialized? " + task.getContext().isInitialized()
                                     );
-                                    if (!task.getContext().isInitialized(txnMngr)) {
-                                        task.getContext().init(txnMngr).then(() => {
+                                    if (!task.getContext().isInitialized()) {
+                                        task.getContext().init().then(() => {
                                             exec(task, txnMngr);
                                         }).catch((err) => {
                                             txnMngr.logger.error("Context init failed.", err);
@@ -104,9 +104,9 @@ export class MultiTxnMngr {
             const contextSet: Set<string> = new Set();
             tasks.forEach(task => {
                 if (task && (task as Task).getContext !== undefined && task.getContext()) {
-                    if (!contextSet.has(task.getContext().getName(this))) {
-                        promises.push(task.getContext().commit(this));
-                        contextSet.add(task.getContext().getName(this));
+                    if (!contextSet.has(task.getContext().getName())) {
+                        promises.push(task.getContext().commit());
+                        contextSet.add(task.getContext().getName());
                     }
                 }
             });
@@ -127,9 +127,9 @@ export class MultiTxnMngr {
             const contextSet: Set<string> = new Set();
             tasks.slice(0, this.lastExecuted).reverse().forEach(task => {
                 if (task && (task as Task).getContext !== undefined && task.getContext()) {
-                    if (!contextSet.has(task.getContext().getName(this))) {
-                        promises.push(task.getContext().rollback(this));
-                        contextSet.add(task.getContext().getName(this));
+                    if (!contextSet.has(task.getContext().getName())) {
+                        promises.push(task.getContext().rollback());
+                        contextSet.add(task.getContext().getName());
                     }
                 }
             });

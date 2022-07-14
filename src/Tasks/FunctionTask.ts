@@ -24,6 +24,7 @@ export class FunctionTask implements Task {
         if (params)
             this.params = params;
     }
+
     getResult() {
         return this.result;
     }
@@ -39,7 +40,5 @@ export class FunctionTask implements Task {
     exec(): Promise<Task> {
         return this.execFunc(this);
     }
-
-
 
 }

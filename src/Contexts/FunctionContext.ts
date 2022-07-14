@@ -3,15 +3,25 @@ import { FunctionTask } from "../Tasks/FunctionTask";
 import { PopTask } from "../Tasks/PopTask";
 import { Task } from "../Tasks/Task";
 import { Context } from "./Context";
+import { v1 } from "uuid";
 
 export class FunctionContext implements Context {
-    init(_multiTxnMngr: MultiTxnMngr): Promise<Context> {
+
+    txnMngr: MultiTxnMngr;
+    contextId: string;
+
+    constructor(txnMngr: MultiTxnMngr) {
+        this.txnMngr = txnMngr;
+        this.contextId = v1();
+    }
+
+    init(): Promise<Context> {
         return Promise.resolve(this);
     }
-    commit(multiTxnMngr: MultiTxnMngr): Promise<Context> {
+    commit(): Promise<Context> {
         return new Promise<Context>((resolveCommit, rejectCommit) => {
             const promises: Promise<FunctionTask>[] = [];
-            multiTxnMngr.tasks.forEach((task) => {
+            this.txnMngr.tasks.forEach((task) => {
                 if (task instanceof FunctionTask && task.commitFunc) {
                     promises.push(task.commitFunc(task));
                 }
@@ -21,10 +31,10 @@ export class FunctionContext implements Context {
                 .catch((err) => rejectCommit(err));
         });
     }
-    rollback(multiTxnMngr: MultiTxnMngr): Promise<Context> {
+    rollback(): Promise<Context> {
         return new Promise<Context>((resolveCommit, rejectCommit) => {
             const promises: Promise<FunctionTask>[] = [];
-            multiTxnMngr.tasks.slice(0, multiTxnMngr.lastExecuted).reverse().forEach((task) => {
+            this.txnMngr.tasks.slice(0, this.txnMngr.lastExecuted).reverse().forEach((task) => {
                 if (task instanceof FunctionTask && task.rollbackFunc) {
                     promises.push(task.rollbackFunc(task));
                 }
@@ -35,42 +45,34 @@ export class FunctionContext implements Context {
         });
     }
 
-    isInitialized(_multiTxnMngr: MultiTxnMngr): boolean {
+    isInitialized(): boolean {
         return true;
     }
 
-    static contextHandle = new FunctionContext();
-
-    static addTask(txnMngr: MultiTxnMngr,
+    addTask(
         execFunc: (task: FunctionTask) => Promise<FunctionTask>,
         params?: unknown,
         commitFunc?: (task: FunctionTask) => Promise<FunctionTask>,
         rollbackFunc?: (task: FunctionTask) => Promise<FunctionTask>): Task {
 
         const task = new FunctionTask(
-            FunctionContext.contextHandle,
+            this,
             execFunc,
             params,
             commitFunc,
             rollbackFunc
         );
-        txnMngr.addTask(task);
+        this.txnMngr.addTask(task);
         return task;
     }
 
-    static addPopTask(txnMngr: MultiTxnMngr,
-        popFunc: (task: PopTask) => Task[]): PopTask {
-
-        const task = new PopTask(
-            FunctionContext.contextHandle,
-            popFunc);
- 
-        txnMngr.addTask(task);
+    addPopTask(popFunc: (task: PopTask) => Task[]): PopTask {
+        const task = new PopTask(this, popFunc);
+        this.txnMngr.addTask(task);
         return task;
     }
 
     getName(): string {
-        return "Function Context Singleton";
+        return "Function Context: " + this.contextId;
     }
-
 }

@@ -18,12 +18,12 @@ describe("Multiple transaction manager workflow test...", () => {
 
     test("Success-commit case", async () => {
 
-        // init manager
+        // init manager & context
         const txnMngr: MultiTxnMngr = new MultiTxnMngr();
-
+        const functionContext = new FunctionContext(txnMngr);
 
         // Add first step
-        FunctionContext.addTask(txnMngr,
+        functionContext.addTask(
             (task) => { return new Promise((resolve, _) => { console.log("Executing 1. "); resolve(task); }); },
             null, // optional params
             (task) => { return new Promise((resolve, _) => { console.log("Committing 1"); resolve(task); }); },
@@ -31,7 +31,7 @@ describe("Multiple transaction manager workflow test...", () => {
         );
 
         // Add second step
-        FunctionContext.addTask(txnMngr,
+        functionContext.addTask(
             (task) => { return new Promise((resolve, _) => { console.log("Executing 2. "); resolve(task); }); },
             null, // optional params
             (task) => { return new Promise((resolve, _) => { console.log("Committing 2"); resolve(task); }); },
@@ -46,12 +46,12 @@ describe("Multiple transaction manager workflow test...", () => {
 
     test("Fail-rollback case", async () => {
 
-        // init manager
+        // init manager & context
         const txnMngr: MultiTxnMngr = new MultiTxnMngr();
-
+        const functionContext = new FunctionContext(txnMngr);
 
         // Add first step
-        FunctionContext.addTask(txnMngr,
+        functionContext.addTask(
             (task) => { return new Promise((resolve, _) => { console.log("Executing 1. "); resolve(task); }); },
             null, // optional params
             (task) => { return new Promise((resolve, _) => { console.log("Committing 1"); resolve(task); }); },
@@ -59,7 +59,7 @@ describe("Multiple transaction manager workflow test...", () => {
         );
 
         // Add second step
-        FunctionContext.addTask(txnMngr,
+        functionContext.addTask(
             (_task) => { return new Promise((resolve, reject) => { console.log("Executing 2. "); reject("Don't worry, this should reject according to test scenario."); }); },
             null, // optional params
             (task) => { return new Promise((resolve, _) => { console.log("Committing 2"); resolve(task); }); },
@@ -67,7 +67,7 @@ describe("Multiple transaction manager workflow test...", () => {
         );
 
         // Add third step. Should not execute
-        FunctionContext.addTask(txnMngr,
+        functionContext.addTask(
             (task) => { return new Promise((resolve, _) => { console.log("Executing 3. "); resolve(task) }); },
             null, // optional params
             (task) => { return new Promise((resolve, _) => { console.log("Committing 3"); resolve(task); }); },
@@ -79,34 +79,35 @@ describe("Multiple transaction manager workflow test...", () => {
     });
 
 
-    test("PopTask test",  async () => {
+    test("PopTask test", async () => {
 
-        // init manager
+        // init manager & context
         const txnMngr: MultiTxnMngr = new MultiTxnMngr();
+        const functionContext = new FunctionContext(txnMngr);
 
         // Task for Kevin
-        const taskForKevin: Task = new FunctionTask(FunctionContext.contextHandle, (task) => {
+        const taskForKevin: Task = new FunctionTask(functionContext, (task) => {
             logger.info("I am Kevin");
             task.result = "Kevin";
             return Promise.resolve(task);
         });
 
         // Task for Bob
-        const taskForBob: Task = new FunctionTask(FunctionContext.contextHandle, (task) => {
+        const taskForBob: Task = new FunctionTask(functionContext, (task) => {
             logger.info("I am Bob");
             task.result = "Bob";
             return Promise.resolve(task);
         });
 
         // Add a task for selecting Bob or Kevin randomly
-        const randTask: Task = FunctionContext.addTask(txnMngr, (task) => {
+        const randTask: Task = functionContext.addTask((task) => {
             task.result = ["Bob", "Kevin"][Math.floor(Math.random() * 2)];
             logger.info(task.result + " is selected");
             return Promise.resolve(task);
         });
 
         // Add a pop task that will add the proper task on the fly... 
-        FunctionContext.addPopTask(txnMngr, (popTask) => {
+        functionContext.addPopTask((popTask) => {
             if (randTask.getResult() === "Kevin") {
                 popTask.popTasks.push(taskForKevin);
             } else {
