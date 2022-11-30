@@ -1,5 +1,6 @@
 import log4js from "@log4js-node/log4js-api";
 import { Context } from "./Contexts/Context";
+import { CondTask, CondTaskRet } from "./Tasks/CondTask";
 import { Task } from "./Tasks/Task";
 
 
@@ -27,10 +28,26 @@ export class MultiTxnMngr {
                 new Promise<Task[]>((resolveChain, rejectChain) => {
                     function exec(task: Task, txnMngr: MultiTxnMngr) {
                         try {
-                            const res: Promise<Task> | Task[] = task.exec();
+                            const res: Promise<Task> | Task[] | CondTaskRet = task.exec();
                             if (Array.isArray(res)) {
                                 tasks.splice(txnMngr.lastExecuted, 0, ...res);
                                 next(txnMngr);
+                            } else if (res instanceof CondTaskRet) {
+                                (task as CondTask).result = res.params;
+                                if (res.code == CondTask.RET_CODE.CONTINUE) {
+                                    txnMngr.logger.debug("Condition OK. Continuing transaction...");
+                                    next(txnMngr);
+                                } else if (res.code == CondTask.RET_CODE.BREAK) {
+                                    txnMngr.logger.debug("Transaction quitting without rollback...");
+                                    resolveChain(tasks);
+                                } else {
+                                    txnMngr.logger.debug("Transaction quitting with rollback!");
+                                    if (res.msg) {
+                                        rejectChain(res.msg);
+                                    } else {
+                                        rejectChain("Transaction rolling back because of condition task!");
+                                    }
+                                }
                             } else {
                                 (res as (Promise<Task>)).then(() => {
                                     next(txnMngr);

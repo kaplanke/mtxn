@@ -1,4 +1,3 @@
-import { MultiTxnMngr } from "../MultiTxnMngr";
 
 export interface Context { 
     init(): Promise<Context>;

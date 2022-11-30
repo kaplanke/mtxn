@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, test } from '@jest/globals';
 import log4js from "log4js";
 import { FunctionContext } from "../src/Contexts/FunctionContext";
 import { MultiTxnMngr } from "../src/MultiTxnMngr";
+import { CondTask, CondTaskRet } from '../src/Tasks/CondTask';
 import { FunctionTask } from "../src/Tasks/FunctionTask";
 import { Task } from "../src/Tasks/Task";
 
@@ -126,5 +127,44 @@ describe("Multiple transaction manager workflow test...", () => {
         }
     });
 
+
+    test("CondTask test", async () => {
+
+        // init manager & context
+        const txnMngr: MultiTxnMngr = new MultiTxnMngr();
+        const functionContext = new FunctionContext(txnMngr);
+
+        // Add a task for selecting Bob, Dave, or Kevin randomly
+        const randTask: Task = functionContext.addTask((task) => {
+            task.result = ["Bob", "Kevin", "Dave"][Math.floor(Math.random() * 3)];
+            logger.info(task.result + " is selected");
+            return Promise.resolve(task);
+        });
+
+        // Add a pop task that will add the proper task on the fly... 
+        functionContext.addCondTask((_) => {
+            if (randTask.getResult() === "Kevin") { // It' OK Kevin
+                return CondTaskRet.BREAK();
+            } else if (randTask.getResult() === "Dave") { // Bad Dave
+                return CondTaskRet.ROLLBACK("No worries, this is expected for Dave...");
+            }
+            return CondTaskRet.CONTINUE(); // Bob 
+        });
+
+        // Add third step. Should not execute if Dave is selected
+        functionContext.addTask(
+            (task) => { return new Promise((resolve, _) => { console.log("Executing 3. "); resolve(task) }); },
+            null, // optional params
+            (task) => { return new Promise((resolve, _) => { console.log("Committing 3"); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("Rolling back 3"); resolve(task); }); }
+        );
+
+        txnMngr.exec().then(_ => {
+            expect(randTask.getResult()).not.toBe("Dave");
+        }).catch(err => { 
+            logger.debug(err);
+            expect(randTask.getResult()).toBe("Dave");
+         });
+    });
 
 });

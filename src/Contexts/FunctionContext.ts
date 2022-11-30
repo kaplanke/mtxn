@@ -4,6 +4,7 @@ import { PopTask } from "../Tasks/PopTask";
 import { Task } from "../Tasks/Task";
 import { Context } from "./Context";
 import { v1 } from "uuid";
+import { CondTask, CondTaskRet } from "../Tasks/CondTask";
 
 export class FunctionContext implements Context {
 
@@ -68,6 +69,12 @@ export class FunctionContext implements Context {
 
     addPopTask(popFunc: (task: PopTask) => Task[]): PopTask {
         const task = new PopTask(this, popFunc);
+        this.txnMngr.addTask(task);
+        return task;
+    }
+
+    addCondTask(condFunc: (task: CondTask) => CondTaskRet): CondTask {
+        const task = new CondTask(this, condFunc);
         this.txnMngr.addTask(task);
         return task;
     }
