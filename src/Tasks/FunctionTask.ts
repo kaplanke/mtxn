@@ -9,6 +9,7 @@ export class FunctionTask implements Task {
     execFunc: (task: FunctionTask) => Promise<FunctionTask>;
     commitFunc: ((task: FunctionTask) => Promise<FunctionTask>) | undefined;
     rollbackFunc: ((task: FunctionTask) => Promise<FunctionTask>) | undefined;
+    isExecuted: Boolean = false;
 
     constructor(context: Context,
         execFunc: (task: FunctionTask) => Promise<FunctionTask>,
@@ -38,6 +39,7 @@ export class FunctionTask implements Task {
     }
 
     exec(): Promise<Task> {
+        this.isExecuted = true;
         return this.execFunc(this);
     }
 

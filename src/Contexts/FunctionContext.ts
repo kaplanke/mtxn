@@ -23,7 +23,7 @@ export class FunctionContext implements Context {
         return new Promise<Context>((resolveCommit, rejectCommit) => {
             const promises: Promise<FunctionTask>[] = [];
             this.txnMngr.tasks.forEach((task) => {
-                if (task instanceof FunctionTask && task.commitFunc) {
+                if (task instanceof FunctionTask && task.commitFunc && task.isExecuted) {
                     promises.push(task.commitFunc(task));
                 }
             });
@@ -36,7 +36,7 @@ export class FunctionContext implements Context {
         return new Promise<Context>((resolveCommit, rejectCommit) => {
             const promises: Promise<FunctionTask>[] = [];
             this.txnMngr.tasks.slice(0, this.txnMngr.lastExecuted).reverse().forEach((task) => {
-                if (task instanceof FunctionTask && task.rollbackFunc) {
+                if (task instanceof FunctionTask && task.rollbackFunc && task.isExecuted) {
                     promises.push(task.rollbackFunc(task));
                 }
             });

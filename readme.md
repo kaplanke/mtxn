@@ -27,46 +27,65 @@ The basic library provides the _FunctionContext_ class which can be used to crea
     const txnMngr: MultiTxnMngr = new MultiTxnMngr();
     const functionContext = new FunctionContext(txnMngr);
 
-    // Add first step
+    // Add a task for selecting Bob, Dave, or Kevin randomly
+    const randTask: Task = functionContext.addTask((task) => {
+        task.result = ["Bob", "Kevin", "Dave"][Math.floor(Math.random() * 3)];
+        logger.info(task.result + " is selected");
+        return Promise.resolve(task);
+    });
+
+    // Add a pop task that will add the proper task on the fly... 
+    functionContext.addCondTask((_) => {
+        if (randTask.getResult() === "Kevin") { // It' OK Kevin
+            return CondTaskRet.BREAK();
+        } else if (randTask.getResult() === "Dave") { // Bad Dave
+            return CondTaskRet.ROLLBACK("No worries, this is expected for Dave...");
+        }
+        return CondTaskRet.CONTINUE(); // Bob 
+    });
+
+    // Add third step. Should not execute if Dave is selected
     functionContext.addTask(
-        (task) => { return new Promise((resolve, _) => { console.log("Executing 1. "); resolve(task); }); },
+        (task) => { return new Promise((resolve, _) => { console.log("Executing 3"); resolve(task) }); },
         null, // optional params
-        (task) => { return new Promise((resolve, _) => { console.log("Committing 1"); resolve(task); }); },
-        (task) => { return new Promise((resolve, _) => { console.log("Rolling back 1"); resolve(task); }); }
+        (task) => { return new Promise((resolve, _) => { console.log("On Txn Commit 3"); resolve(task); }); },
+        (task) => { return new Promise((resolve, _) => { console.log("On Txn Rollback 3"); resolve(task); }); }
     );
 
-    // Add this step if you wan to test rollback case ...
-    /*
-    functionContext.addTask(
-        (_task) => { return new Promise((resolve, reject) => { console.log("Executing 2. "); reject("Don't worry, this should reject according to test scenario."); }); },
-        null, // optional params
-        (task) => { return new Promise((resolve, _) => { console.log("Committing 2"); resolve(task); }); },
-        (task) => { return new Promise((resolve, _) => { console.log("Rolling back 2"); resolve(task); }); }
-    );
-    */
-
-    // Add third step.
-    functionContext.addTask(
-        (task) => { return new Promise((resolve, _) => { console.log("Executing 3. "); resolve(task) }); },
-        null, // optional params
-        (task) => { return new Promise((resolve, _) => { console.log("Committing 3"); resolve(task); }); },
-        (task) => { return new Promise((resolve, _) => { console.log("Rolling back 3"); resolve(task); }); }
-    );
-
-    // jest...
-    await expect(txnMngr.exec()).resolves.not.toBeNull();
-
+    txnMngr.exec().then(_ => {
+        expect(randTask.getResult()).not.toBe("Dave");
+    }).catch(err => { 
+        logger.debug(err);
+        expect(randTask.getResult()).toBe("Dave");
+    });
 
 ```
+
 The expected output:
 
+If Dave is randomly selected
 ```
-Executing 1.
-Executing 3.
-Committing 1
-Committing 3
-... [INFO] MultiTxnMngr - Transaction chain completed.
+[INFO] default - Dave is selected
+[DEBUG] MultiTxnMngr - Transaction quitting with rollback!
+[ERROR] MultiTxnMngr - Transaction chain failed. Please see previous errors.
+[INFO] MultiTxnMngr - Transaction chain rollbacked.
+[DEBUG] default - No worries, this is expected for Dave...
+```
 
+If Kevin is randomly selected
+```
+[INFO] default - Kevin is selected
+[DEBUG] MultiTxnMngr - Transaction quitting without rollback...
+[INFO] MultiTxnMngr - Transaction chain completed.
+```
+
+If Bob is randomly selected
+```
+[INFO] default - Bob is selected
+[DEBUG] MultiTxnMngr - Condition OK. Continuing transaction...
+Executing 3.
+On Txn Commit 3
+[INFO] MultiTxnMngr - Transaction chain completed.
 ```
 
 ## API
@@ -170,6 +189,28 @@ Adds a task which will generate an array of additional tasks to inject to the ta
 -   `popFunc`: _{(task: PopTask) => Task[]}_ The function that will generate additional tasks to add to the task list.
 -   Returns: {__PopTask__} The created _PopTask_ instance.
 
+#### __CondTask__
+
+####  `constructor(context, condFunc)`
+-   `context`: _{Context}_ The _FunctionContext_ to to bind with the task.
+-   `condFunc`: _{(task: CondTask) => CondTaskRet}_ The function that will evaluate the current condition and return the proper _CondTaskRet_. 
+-   Returns: {__CondTask__} The created _CondTaskRet_ instance.
+
+#### __CondTaskRet__
+
+####  `CondTaskRet.CONTINUE()`
+-   Returns: {__CondTaskRet__} The created _CondTaskRet_ instance which allows the transaction flow without any intervention.
+
+####  `CondTaskRet.BREAK(params)`
+-   `params`: _{object}_ Additional parameters which will be available as the result of the task after execution.
+-   Returns: {__CondTaskRet__} The created _CondTaskRet_ instance which makes the transaction to commit immediately without executing any consecutive tasks.
+
+####  `CondTaskRet.ROLLBACK(msg, params)`
+-   `msg`: _{Context}_ The _FunctionContext_ to to bind with the task.
+-   `params`: {object} Additional parameters which will be available as the result of the task after execution.
+-   Returns: {__CondTaskRet__} The created _CondTaskRet_ instance which makes the transaction to rollback immediately with the provided message.
+
+
 ## Contexts
 
 Currently the following contexts are available;
@@ -192,3 +233,15 @@ Although multiple-transaction-manager manages the transactions under normal circ
 -   If an error occurs during the commit phase of a context, the rollback action is triggered for the entire _MultiTxnMngr_ which may not be able to rollback already committed contexts.
 -   You may still have deadlocks during the execution of the workflow if you use the same transaction provider for multiple contexts. (For example if you use Sequelize Context and MySql context at the same _MultiTxnMngr_, you may block both contexts during a reciprocal update statement.)
 -   If you like to pass parameters that depends on the execution of the previous tasks, you should use a function ( ()=>{} ) instead of an object. (There is an exception for Redis context, please see the context page for details.)
+
+## Release Notes
+
+### 1.0.5
+
+-   CondTask introduced
+-   Pg adapter txn begin fix
+
+### 1.0.4
+
+-   PopTask introduced
+

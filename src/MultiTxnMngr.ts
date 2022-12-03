@@ -68,7 +68,7 @@ export class MultiTxnMngr {
                                 if (!task || (task as Task).exec === undefined) {
                                     next(txnMngr);
                                 } else {
-                                    txnMngr.logger.debug(
+                                    txnMngr.logger.trace(
                                         "Is " + task.getContext().getName()
                                         + " initialized? " + task.getContext().isInitialized()
                                     );

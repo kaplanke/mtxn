@@ -25,18 +25,18 @@ describe("Multiple transaction manager workflow test...", () => {
 
         // Add first step
         functionContext.addTask(
-            (task) => { return new Promise((resolve, _) => { console.log("Executing 1. "); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("Executing 1"); resolve(task); }); },
             null, // optional params
-            (task) => { return new Promise((resolve, _) => { console.log("Committing 1"); resolve(task); }); },
-            (task) => { return new Promise((resolve, _) => { console.log("Rolling back 1"); resolve(task); }); }
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Commit 1"); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Rollback 1"); resolve(task); }); }
         );
 
         // Add second step
         functionContext.addTask(
-            (task) => { return new Promise((resolve, _) => { console.log("Executing 2. "); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("Executing 2"); resolve(task); }); },
             null, // optional params
-            (task) => { return new Promise((resolve, _) => { console.log("Committing 2"); resolve(task); }); },
-            (task) => { return new Promise((resolve, _) => { console.log("Rolling back 2"); resolve(task); }); }
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Commit 2"); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Rollback 2"); resolve(task); }); }
         );
 
 
@@ -53,26 +53,26 @@ describe("Multiple transaction manager workflow test...", () => {
 
         // Add first step
         functionContext.addTask(
-            (task) => { return new Promise((resolve, _) => { console.log("Executing 1. "); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("Executing 1"); resolve(task); }); },
             null, // optional params
-            (task) => { return new Promise((resolve, _) => { console.log("Committing 1"); resolve(task); }); },
-            (task) => { return new Promise((resolve, _) => { console.log("Rolling back 1"); resolve(task); }); }
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Commit 1"); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Rollback 1"); resolve(task); }); }
         );
 
         // Add second step
         functionContext.addTask(
-            (_task) => { return new Promise((resolve, reject) => { console.log("Executing 2. "); reject("Don't worry, this should reject according to test scenario."); }); },
+            (_task) => { return new Promise((resolve, reject) => { console.log("Executing 2"); reject("Don't worry, this should reject according to test scenario."); }); },
             null, // optional params
-            (task) => { return new Promise((resolve, _) => { console.log("Committing 2"); resolve(task); }); },
-            (task) => { return new Promise((resolve, _) => { console.log("Rolling back 2"); resolve(task); }); }
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Commit 2"); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Rollback 2"); resolve(task); }); }
         );
 
         // Add third step. Should not execute
         functionContext.addTask(
-            (task) => { return new Promise((resolve, _) => { console.log("Executing 3. "); resolve(task) }); },
+            (task) => { return new Promise((resolve, _) => { console.log("Executing 3"); resolve(task) }); },
             null, // optional params
-            (task) => { return new Promise((resolve, _) => { console.log("Committing 3"); resolve(task); }); },
-            (task) => { return new Promise((resolve, _) => { console.log("Rolling back 3"); resolve(task); }); }
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Commit 3"); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Rollback 3"); resolve(task); }); }
         );
 
         await expect(txnMngr.exec()).rejects.not.toBeNull();
@@ -153,10 +153,10 @@ describe("Multiple transaction manager workflow test...", () => {
 
         // Add third step. Should not execute if Dave is selected
         functionContext.addTask(
-            (task) => { return new Promise((resolve, _) => { console.log("Executing 3. "); resolve(task) }); },
+            (task) => { return new Promise((resolve, _) => { console.log("Executing 3"); resolve(task) }); },
             null, // optional params
-            (task) => { return new Promise((resolve, _) => { console.log("Committing 3"); resolve(task); }); },
-            (task) => { return new Promise((resolve, _) => { console.log("Rolling back 3"); resolve(task); }); }
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Commit 3"); resolve(task); }); },
+            (task) => { return new Promise((resolve, _) => { console.log("On Txn Rollback 3"); resolve(task); }); }
         );
 
         txnMngr.exec().then(_ => {
